@@ -30,17 +30,33 @@ def bakeries():
     )
     return response
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods=['GET', 'PATCH', 'DELETE'])
 def bakery_by_id(id):
+    bakery = Bakery.query.filter(Bakery.id==id).first()
 
-    bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
+    if request.method == 'GET':
+        bakery_serialized = bakery.to_dict()
 
-    response = make_response(
-        bakery_serialized,
-        200
-    )
-    return response
+        response = make_response(
+            bakery_serialized,
+            200
+        )
+        return response
+    
+    elif request.method == 'PATCH':
+        for attr in request.form:
+            setattr(bakery, attr, request.form.get(attr))
+        
+        db.session.add(bakery)
+        db.session.commit()
+        bakery_dict = bakery.to_dict()
+
+        response = make_response(
+            bakery_dict,
+            200
+        )
+
+        return response
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
@@ -65,6 +81,56 @@ def most_expensive_baked_good():
         200
     )
     return response
+
+@app.route('/baked_goods', methods=['POST'])
+def add_baked_good():
+
+    new_baked_good = BakedGood(
+        name=request.form.get("name"),
+        price=request.form.get("price")
+    )
+
+    db.session.add(new_baked_good)
+    db.session.commit()
+    
+    baked_good_dict = new_baked_good.to_dict()
+
+    response = make_response(
+        baked_good_dict,
+        201
+    )
+
+    return response
+
+@app.route('/baked_goods/<int:id>', methods=['GET', 'DELETE'])
+def baked_good_by_id(id):
+    baked_good = BakedGood.query.filter(BakedGood.id==id).first()
+
+    if request.method == 'GET':
+        baked_good_serialized = baked_good.to_dict()
+
+        response = make_response(
+            baked_good_serialized,
+            200
+        )
+        return response
+
+    elif request.method == 'DELETE':
+        db.session.delete(baked_good)
+        db.session.commit()
+
+        response_body = {
+            "delete_successful": True,
+            "message": "Baked good deleted."    
+        }
+
+        response = make_response(
+            response_body,
+            200
+        )
+
+        return response
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
